@@ -134,41 +134,7 @@ echo "======================================="
 
 mkdir -p "lib"
 
-####################################################
-# Install standalone toolchain x86
-
-build "x86" "x86" "x86" "i686-linux-android" "" "android-x86"
-
-####################################################
-# Install standalone toolchain x86_64
-
-build "x86_64" "x86_64" "x86_64" "x86_64-linux-android" "" "android64"
-
-
-################################################################
-# Install standalone toolchain ARMeabi
-
-build "ARMeabi" "armeabi" "arm" "arm-linux-androideabi" "" "android"
-
-################################################################
-# Install standalone toolchain ARMeabi-v7a
-
-build "ARMeabi-v7a" "armeabi-v7a" "arm" "arm-linux-androideabi" "-march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3" "android"
-
-################################################################
-# Install standalone toolchain ARM64-v8a
-
-build "ARM64-v8a" "arm64-v8a" "arm64" "aarch64-linux-android" "" "android64-aarch64"
-
-################################################################
-# Install standalone toolchain MIPS
-
-#build "MIPS" "mips" "mips" "mipsel-linux-android" ""
-
-################################################################
-# Install standalone toolchain MIPS64
-
-#build "MIPS64" "mips64" "mips64" "mips64el-linux-android" ""
+source "../build-include.sh"
 
 rm -rf "${OPENSSL_VERSION}"
 
