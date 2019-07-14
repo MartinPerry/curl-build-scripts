@@ -129,42 +129,7 @@ echo "======================================="
 
 mkdir -p "lib"
 
-####################################################
-# Install standalone toolchain x86
-
-build "x86" "x86" "x86" "i686-linux-android" ""
-
-####################################################
-# Install standalone toolchain x86_64
-
-build "x86_64" "x86_64" "x86_64" "x86_64-linux-android" ""
-
-
-################################################################
-# Install standalone toolchain ARMeabi
-
-build "ARMeabi" "armeabi" "arm" "arm-linux-androideabi" ""
-
-################################################################
-# Install standalone toolchain ARMeabi-v7a
-
-build "ARMeabi-v7a" "armeabi-v7a" "arm" "arm-linux-androideabi" "-march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3"
-
-################################################################
-# Install standalone toolchain ARM64-v8a
-
-build "ARM64-v8a" "arm64-v8a" "arm64" "aarch64-linux-android" ""
-
-################################################################
-# Install standalone toolchain MIPS
-
-#build "MIPS" "mips" "mips" "mipsel-linux-android" ""
-
-################################################################
-# Install standalone toolchain MIPS64
-
-#build "MIPS64" "mips64" "mips64" "mips64el-linux-android" ""
-
+source "../build-include.sh"
 
 rm -rf "${NGHTTP2_VERSION}"
 
