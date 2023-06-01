@@ -1,10 +1,8 @@
 #!/bin/bash
 
-
-set -e
-
 source "../prefix.sh"
 
+OPENSSL_VERSION="openssl-${OPENSSL_VERNUM}"
 
 if [ ! -e ${OPENSSL_VERSION}.tar.gz ]; then
     echo "Downloading ${OPENSSL_VERSION}.tar.gz"
@@ -13,118 +11,95 @@ else
     echo "Using ${OPENSSL_VERSION}.tar.gz"
 fi
 
-echo "Unpacking openssl"
-tar xfz "${OPENSSL_VERSION}.tar.gz"
+#echo "Unpacking openssl"
+#tar xfz "${OPENSSL_VERSION}.tar.gz"
 
 #=============================================================================
 
+#https://ruiying.io/posts/compile-openssl-and-curl-for-android
+#https://github.com/openssl/openssl/blob/master/NOTES-ANDROID.md
+
+#https://developer.android.com/ndk/guides/other_build_systems
 
 build() {
 
-# $1: Toolchain Name
+# $1: Android Arch Name
 # $2: Toolchain architecture
-# $3: Android arch
-# $4: host for configure
-# $5: additional CPP flags
-# $6: configure architecture
-
-pushd . > /dev/null
 
 
-echo "preparing ${1} toolchain"
+#ARCH = aarch64, armv7a, i686, x86_64
+export ARCH=$1
 
-if [[ ! -d "$ANDROID_NDK_ROOT/platforms/android-${API_VERSION}/arch-${3}" ]]; then
-    echo "Architecture ${3} not exist for API ${API_VERSION}"
+#SSL_ARCH = android-arm, android-arm64, android-mips, android-mip64, android-x86 and android-x86_64
+export SSL_ARCH=$2
+
+
+export TARGET="${ARCH}-linux-android"
+if [[ ${ARCH} == "armv7a" ]]; then
+    TARGET="${TARGET}eabi"
+fi
+
+echo "Building ${OPENSSL_VERSION} for ${ARCH} / ${TARGET} / ${SSL_ARCH}"
+
+initToolchain "${TARGET}"
+if [[ ${isValid} == 0 ]]; then
     return
 fi
 
-
-export PLATFORM_PREFIX="${PWD}/${2}-toolchain"
-export BUILD_DIR="${PWD}/build-${2}"
-
-
-#https://developer.android.com/ndk/guides/standalone_toolchain.html
-$ANDROID_NDK_ROOT/build/tools/make_standalone_toolchain.py \
-    --api=${API_VERSION} \
-    --install-dir=${PLATFORM_PREFIX} \
-    --stl=libc++ \
-    --arch=${3} \
-    --force
+#export ANDROID_NDK_ROOT="${ANDROID_NDK_HOME}"
+#export ANDROID_NDK="${ANDROID_NDK_HOME}"
   
-export PATH=${PLATFORM_PREFIX}/bin:${PATH}
-
-#export CFLAGS="-D__ANDROID_API__=26"
-export CPPFLAGS="-fPIE -I${PLATFORM_PREFIX}/include ${CFLAGS} -I${ANDROID_NDK}/sources/android/cpufeatures ${5}"
-export LDFLAGS="-fPIE -L${PLATFORM_PREFIX}/lib"
-export PKG_CONFIG_PATH="${PLATFORM_PREFIX}/lib/pkgconfig"
-export PKG_CONFIG_LIBDIR="${PKG_CONFIG_PATH}"
-export TARGET_HOST="${4}"
-export CC="${TARGET_HOST}-clang"
-export CXX="${TARGET_HOST}-clang++"
-if [ "${ENABLE_CCACHE}" ]; then
-    export CC="ccache ${TARGET_HOST}-clang"
-    export CXX="ccache ${TARGET_HOST}-clang++"
-fi
-
-export SYSROOT="${PLATFORM_PREFIX}/sysroot"
-export CROSS_SYSROOT="${SYSROOT}"
-export LINK="${CXX}"
-export LD="${TARGET_HOST}-ld"
-export AR="${TARGET_HOST}-ar"
-export RANLIB="${TARGET_HOST}-ranlib"
-export STRIP="${TARGET_HOST}-strip"
-
-export ANDROID_SYSROOT="${SYSROOT}"
-export CROSS_SYSROOT="${SYSROOT}"
-export NDK_SYSROOT="${SYSROOT}"
-
-#export CROSS_COMPILE="${4}-"
-#export ANDROID_DEV="$ANDROID_NDK_ROOT/platforms/android-26/arch-${3}/usr"
-
-echo "Building ${OPENSSL_VERSION} for ${2} / ${6}"
-
-INSTALL_DIR="${PWD}/install/${2}"
+export CUR_DIR=${PWD}
+  
+initCompilerFlags "${ARCH}"
+  
+export BUILD_DIR="${CUR_DIR}/build-${ARCH}"
+export INSTALL_DIR="${CUR_DIR}/install/${ARCH}"
 
 mkdir -p "${BUILD_DIR}"
-mkdir -p "${BUILD_DIR}/${OPENSSL_VERSION}-${2}"
+mkdir -p "${BUILD_DIR}/${OPENSSL_VERSION}-${ARCH}"
 mkdir -p "${INSTALL_DIR}"
 
-cd "${PWD}/${OPENSSL_VERSION}"
+#export CROSS_COMPILE=${CC}
+#--cross-compile-prefix=${CROSS_COMPILE} \
 
-perl ./configure "${6}" no-shared no-asm \
+echo "${BUILD_DIR}/${OPENSSL_VERSION}-${ARCH}"
+
+echo "Unpacking openssl to: ${BUILD_DIR}/${OPENSSL_VERSION}-${ARCH}"
+tar xfz "${OPENSSL_VERSION}.tar.gz" -C "${BUILD_DIR}/${OPENSSL_VERSION}-${ARCH}" --strip-components=1
+        
+cd "${BUILD_DIR}/${OPENSSL_VERSION}-${ARCH}"
+        
+./Configure "${SSL_ARCH}" no-shared no-asm \
+        -D__ANDROID_API__=${API_VERSION} \
         --prefix="${INSTALL_DIR}" \
-        --openssldir="${BUILD_DIR}/${OPENSSL_VERSION}-${2}" &> "${BUILD_DIR}/openssl-${2}_configure.log"
+        --openssldir="${BUILD_DIR}/${OPENSSL_VERSION}-${ARCH}" &> "${BUILD_DIR}/openssl-${ARCH}_configure.log"
 
-#remove -mandroid switch for build on Mac with clang
-export LC_ALL=C
-export LANG=C
-sed -e s/\-mandroid//g Makefile > Makefile_android
-mv Makefile_android Makefile
-#=====
+#perl configdata.pm --dump
 
-make depend >> "${BUILD_DIR}/openssl-${2}_make_depend.log" 2>&1
-make -j4  >> "${BUILD_DIR}/openssl-${2}_make.log" 2>&1
-make install_sw >> "${BUILD_DIR}/openssl-${2}_make_install_sw.log" 2>&1
-#make install  >> "${BUILD_DIR}/openssl-${2}_make_install.log" 2>&1
-make clean  >> "${BUILD_DIR}/openssl-${2}_make_clean.log" 2>&1
+echo "Running make"
 
-cd ..
+make depend >> "${BUILD_DIR}/openssl-${ARCH}_make_depend.log" 2>&1
+make -j4  >> "${BUILD_DIR}/openssl-${ARCH}_make.log" 2>&1
+make install_sw >> "${BUILD_DIR}/openssl-${ARCH}_make_install_sw.log" 2>&1
+#make install  >> "${BUILD_DIR}/openssl-${ARCH}_make_install.log" 2>&1
+make clean  >> "${BUILD_DIR}/openssl-${ARCH}_make_clean.log" 2>&1
 
-mkdir -p "lib/${2}"
-#mkdir -p "lib/${2}/include"
-#mkdir -p "lib/${2}/include/openssl"
+cd ${CUR_DIR}
 
-#cp "${INSTALL_DIR}/lib/libssl.a" "lib/$2/libssl.a"
-#cp "${INSTALL_DIR}/lib/libcrypto.a" "lib/$2/libcrypto.a"
-#cp -a "${INSTALL_DIR}/include/openssl/." "lib/$2/include/openssl/"
+mkdir -p "lib/${ARCH}"
+#mkdir -p "lib/${ARCH}/include"
+#mkdir -p "lib/${ARCH}/include/openssl"
 
-cp ${INSTALL_DIR}/lib/*.a ./lib/$2/
+#cp "${INSTALL_DIR}/lib/libssl.a" "lib/$ARCH/libssl.a"
+#cp "${INSTALL_DIR}/lib/libcrypto.a" "lib/$ARCH/libcrypto.a"
+#cp -a "${INSTALL_DIR}/include/openssl/." "lib/$ARCH/include/openssl/"
 
+cp ${INSTALL_DIR}/lib/*.a ./lib/${ARCH}/
 
-rm -rf "${PLATFORM_PREFIX}"
-rm -rf "${BUILD_DIR}"
+rm -rf "${BUILD_DIR}/${OPENSSL_VERSION}-${ARCH}"
+#rm -rf "${BUILD_DIR}"
 
-popd > /dev/null
 }
 
 
@@ -134,8 +109,27 @@ echo "======================================="
 
 mkdir -p "lib"
 
-source "../build-include.sh"
+####################################################
+# Install standalone toolchain x86
 
-rm -rf "${OPENSSL_VERSION}"
+build "i686" "android-x86"
+
+####################################################
+# Install standalone toolchain x86_64
+
+build "x86_64" "android-x86_64"
+
+################################################################
+# Install standalone toolchain arm64
+
+build "aarch64" "android-arm64"
+
+################################################################
+# Install standalone toolchain armv7a
+
+build "armv7a" "android-arm"
+
+
+#rm -rf "${OPENSSL_VERSION}"
 
 echo "Done"
