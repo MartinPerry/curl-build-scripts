@@ -5,6 +5,12 @@ source "../prefix.sh"
 
 CURL_VERSION="curl-${CURL_VERNUM}"
 
+CURL_PARAMS="--enable-websockets"
+CURL_PARAMS="${CURL_PARAMS} --disable-progress-meter --without-ngtcp2 --disable-manual --disable-smtp --disable-pop3 --disable-imap"
+CURL_PARAMS="${CURL_PARAMS} --disable-ftp --disable-tftp --disable-telnet --disable-rtsp --disable-ldaps --disable-ldap"
+CURL_PARAMS="${CURL_PARAMS} --disable-netrc --disable-ntlm --disable-tftp"
+CURL_PARAMS="${CURL_PARAMS} --without-zlib --without-brotli --without-zstd --without-librtmp"
+
 if [ ! -e ${CURL_VERSION}.tar.gz ]; then
     echo "Downloading ${CURL_VERSION}.tar.gz"
     curl -LO https://curl.haxx.se/download/${CURL_VERSION}.tar.gz
@@ -61,13 +67,8 @@ echo "Load nghttp2 from ${NGHTTP2}/install/${ARCH}"
 cd "${BUILD_DIR}"
 
 sh ${CUR_DIR}/${CURL_VERSION}/configure --prefix="${INSTALL_DIR}" \
-        --disable-shared --disable-smtp --disable-pop3 --disable-imap \
-        --disable-ftp --disable-tftp --disable-telnet --disable-rtsp \
-        --disable-ldap --disable-manual \
-        --disable-debug --disable-gopher --disable-dict --disable-sspi \
-        --enable-static --enable-ipv6 \
-        --without-zlib --without-librtmp --without-gnutls \
-        --without-mbedtls --without-nss \
+        --disable-shared --enable-static --enable-ipv6 \
+		${CURL_PARAMS} \
         --with-random=/dev/urandom \
         --with-ssl="${OPENSSL}/install/${ARCH}" \
         --with-nghttp2="${NGHTTP2}/install/${ARCH}" \
