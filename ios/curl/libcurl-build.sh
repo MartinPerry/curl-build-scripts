@@ -44,10 +44,12 @@ FORCE_SSLV3="no"
 
 CURL_PARAMS="--enable-websockets"
 CURL_PARAMS="${CURL_PARAMS} --disable-progress-meter --without-ngtcp2 --disable-manual --disable-smtp --disable-pop3 --disable-imap"
-CURL_PARAMS="${CURL_PARAMS} --disable-ftp --disable-tftp --disable-telnet --disable-rtsp --disable-ldaps --disable-ldap"
+CURL_PARAMS="${CURL_PARAMS} --disable-ftp --disable-tftp --disable-telnet --disable-rtsp --disable-ldaps --disable-ldap --disable-doh"
+CURL_PARAMS="${CURL_PARAMS} --disable-kerberos-auth --disable-aws --disable-digest-auth --disable-ntlm-wb --disable-negotiate-auth"
+CURL_PARAMS="${CURL_PARAMS} --disable-digest-auth --disable-netrc"
 CURL_PARAMS="${CURL_PARAMS} --disable-netrc --disable-ntlm --disable-tftp"
 CURL_PARAMS="${CURL_PARAMS} --without-brotli --without-zstd --without-librtmp"
-CURL_PARAMS="${CURL_PARAMS} --without-libpsl"
+CURL_PARAMS="${CURL_PARAMS} --without-libpsl --without-libidn2"
 #CURL_PARAMS="${CURL_PARAMS} --without-zlib"
 
 # Set minimum OS versions for target
