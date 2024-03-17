@@ -5,11 +5,17 @@ source "../prefix.sh"
 
 CURL_VERSION="curl-${CURL_VERNUM}"
 
+#https://github.com/curl/curl/blob/master/docs/INSTALL.md - See section "Reducing size"
+
 CURL_PARAMS="--enable-websockets"
 CURL_PARAMS="${CURL_PARAMS} --disable-progress-meter --without-ngtcp2 --disable-manual --disable-smtp --disable-pop3 --disable-imap"
-CURL_PARAMS="${CURL_PARAMS} --disable-ftp --disable-tftp --disable-telnet --disable-rtsp --disable-ldaps --disable-ldap"
+CURL_PARAMS="${CURL_PARAMS} --disable-ftp --disable-tftp --disable-telnet --disable-rtsp --disable-ldaps --disable-ldap --disable-doh"
+CURL_PARAMS="${CURL_PARAMS} --disable-kerberos-auth --disable-aws --disable-digest-auth --disable-ntlm-wb --disable-negotiate-auth"
+CURL_PARAMS="${CURL_PARAMS} --disable-digest-auth --disable-netrc"
 CURL_PARAMS="${CURL_PARAMS} --disable-netrc --disable-ntlm --disable-tftp"
-CURL_PARAMS="${CURL_PARAMS} --without-zlib --without-brotli --without-zstd --without-librtmp"
+CURL_PARAMS="${CURL_PARAMS} --without-brotli --without-zstd --without-librtmp"
+CURL_PARAMS="${CURL_PARAMS} --without-libpsl --without-libidn2"
+#CURL_PARAMS="${CURL_PARAMS} --without-zlib"
 
 if [ ! -e ${CURL_VERSION}.tar.gz ]; then
     echo "Downloading ${CURL_VERSION}.tar.gz"
