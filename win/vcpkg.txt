@@ -1,0 +1,8 @@
+Default (gzip support is default):
+vcpkg install curl[core,winssl,http2]:x64-windows-static --recurse
+
+Add support for brotli and deflate:
+vcpkg install curl[core,winssl,http2,brotli,zstd]:x64-windows-static --recurse
+
+
+vcpkg install nghttp2:x64-windows-static --recurse
