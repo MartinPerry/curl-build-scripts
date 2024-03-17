@@ -40,12 +40,15 @@ noopenssl="0"
 catalyst="0"
 FORCE_SSLV3="no"
 
-#https://github.com/curl/curl/blob/master/docs/INSTALL.md
+#https://github.com/curl/curl/blob/master/docs/INSTALL.md - See section "Reducing size"
+
 CURL_PARAMS="--enable-websockets"
 CURL_PARAMS="${CURL_PARAMS} --disable-progress-meter --without-ngtcp2 --disable-manual --disable-smtp --disable-pop3 --disable-imap"
 CURL_PARAMS="${CURL_PARAMS} --disable-ftp --disable-tftp --disable-telnet --disable-rtsp --disable-ldaps --disable-ldap"
 CURL_PARAMS="${CURL_PARAMS} --disable-netrc --disable-ntlm --disable-tftp"
-CURL_PARAMS="${CURL_PARAMS} --without-zlib --without-brotli --without-zstd --without-librtmp"
+CURL_PARAMS="${CURL_PARAMS} --without-brotli --without-zstd --without-librtmp"
+CURL_PARAMS="${CURL_PARAMS} --without-libpsl"
+#CURL_PARAMS="${CURL_PARAMS} --without-zlib"
 
 # Set minimum OS versions for target
 IOS_MIN_SDK_VERSION="12.0"
