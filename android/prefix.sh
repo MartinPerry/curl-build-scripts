@@ -2,7 +2,7 @@
 
 export OPENSSL_VERNUM="1.1.1t"
 export NGHTTP2_VERNUM="1.52.0"
-export CURL_VERNUM="8.1.1"
+export CURL_VERNUM="8.6.0"
 
 export ANDROID_NDK_HOME="/Users/perry/Library/Android/sdk/ndk/25.2.9519653"
 
