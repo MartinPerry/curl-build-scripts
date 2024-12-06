@@ -281,49 +281,39 @@ buildIOS "arm64e"
 buildIOSsim "x86_64"
 buildIOSsim "arm64"
 
+# Device
+
 echo "  Copying headers and libraries"
 cp /tmp/${OPENSSL_VERSION}-iOS-arm64/include/openssl/* iOS/include/openssl/
 
 lipo \
 	"/tmp/${OPENSSL_VERSION}-iOS-arm64/lib/libcrypto.a" \
 	"/tmp/${OPENSSL_VERSION}-iOS-arm64e/lib/libcrypto.a" \
-	-create -output iOS/lib/libcrypto.a
+	-create -output iOS/lib/libcrypto_iOS.a
 
 lipo \
 	"/tmp/${OPENSSL_VERSION}-iOS-arm64/lib/libssl.a" \
 	"/tmp/${OPENSSL_VERSION}-iOS-arm64e/lib/libssl.a" \
-	-create -output iOS/lib/libssl.a
+	-create -output iOS/lib/libssl_iOS.a
 
+# Simulator
 
 cp /tmp/${OPENSSL_VERSION}-iOS-Simulator-x86_64/include/openssl/* iOS-simulator/include/openssl/
 
 lipo \
 	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-x86_64/lib/libcrypto.a" \
 	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-arm64/lib/libcrypto.a" \
-	-create -output iOS-simulator/lib/libcrypto.a
+	-create -output iOS-simulator/lib/libcrypto_iOS_simulator.a
 
 lipo \
 	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-x86_64/lib/libssl.a" \
 	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-arm64/lib/libssl.a" \
-	-create -output iOS-simulator/lib/libssl.a
+	-create -output iOS-simulator/lib/libssl_iOS_simulator.a
 
-cp /tmp/${OPENSSL_VERSION}-iOS-arm64/include/openssl/* iOS-fat/include/openssl/
-
-lipo \
-	"/tmp/${OPENSSL_VERSION}-iOS-arm64/lib/libcrypto.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-arm64e/lib/libcrypto.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-x86_64/lib/libcrypto.a" \
-	-create -output iOS-fat/lib/libcrypto.a
-
-lipo \
-	"/tmp/${OPENSSL_VERSION}-iOS-arm64/lib/libssl.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-arm64e/lib/libssl.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-x86_64/lib/libssl.a" \
-	-create -output iOS-fat/lib/libssl.a
 
 echo "  Creating combined OpenSSL libraries for iOS"
-libtool -no_warning_for_no_symbols -static -o openssl-ios-arm64_arm64e.a iOS/lib/libcrypto.a iOS/lib/libssl.a
-libtool -no_warning_for_no_symbols -static -o openssl-ios-x86_64_arm64-simulator.a iOS-simulator/lib/libcrypto.a iOS-simulator/lib/libssl.a
+libtool -no_warning_for_no_symbols -static -o openssl-ios-arm64_arm64e.a iOS/lib/libcrypto_iOS.a iOS/lib/libssl_iOS.a
+libtool -no_warning_for_no_symbols -static -o openssl-ios-x86_64_arm64-simulator.a iOS-simulator/lib/libcrypto_iOS_simulator.a iOS-simulator/lib/libssl_iOS_simulator.a
 
 echo -e "${bold}Cleaning up${dim}"
 rm -rf /tmp/${OPENSSL_VERSION}-*

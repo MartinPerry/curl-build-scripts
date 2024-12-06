@@ -40,8 +40,7 @@ noopenssl="0"
 catalyst="0"
 FORCE_SSLV3="no"
 
-#https://github.com/curl/curl/blob/master/docs/INSTALL.md - See section "Reducing size"
-
+#https://github.com/curl/curl/blob/master/docs/INSTALL.md
 CURL_PARAMS="--enable-websockets"
 CURL_PARAMS="${CURL_PARAMS} --disable-progress-meter --without-ngtcp2 --disable-manual --disable-smtp --disable-pop3 --disable-imap"
 CURL_PARAMS="${CURL_PARAMS} --disable-ftp --disable-tftp --disable-telnet --disable-rtsp --disable-ldaps --disable-ldap --disable-doh"
@@ -51,6 +50,7 @@ CURL_PARAMS="${CURL_PARAMS} --disable-netrc --disable-ntlm --disable-tftp"
 CURL_PARAMS="${CURL_PARAMS} --without-brotli --without-zstd --without-librtmp"
 CURL_PARAMS="${CURL_PARAMS} --without-libpsl --without-libidn2"
 #CURL_PARAMS="${CURL_PARAMS} --without-zlib"
+
 
 # Set minimum OS versions for target
 IOS_MIN_SDK_VERSION="12.0"
@@ -333,25 +333,25 @@ buildIOSsim "arm64" "bitcode"
 lipo \
 	"/tmp/${CURL_VERSION}-iOS-simulator-x86_64-bitcode/lib/libcurl.a" \
 	"/tmp/${CURL_VERSION}-iOS-simulator-arm64-bitcode/lib/libcurl.a" \
-	-create -output lib/libcurl_iOS-simulator.a
+	-create -output lib/libcurl_iOS_simulator.a
 
-lipo \
-	"/tmp/${CURL_VERSION}-iOS-arm64-bitcode/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-arm64e-bitcode/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-simulator-x86_64-bitcode/lib/libcurl.a" \
-	-create -output lib/libcurl_iOS-fat.a
 
 if [[ "${NOBITCODE}" == "yes" ]]; then
 	echo -e "${bold}Building iOS libraries (nobitcode)${dim}"
 	buildIOS "arm64" "nobitcode"
 	buildIOS "arm64e" "nobitcode"
 	buildIOSsim "x86_64" "nobitcode"
-
+    buildIOSsim "arm64" "nobitcode"
+    
 	lipo \
 		"/tmp/${CURL_VERSION}-iOS-arm64-nobitcode/lib/libcurl.a" \
 		"/tmp/${CURL_VERSION}-iOS-arm64e-nobitcode/lib/libcurl.a" \
-		"/tmp/${CURL_VERSION}-iOS-simulator-x86_64-nobitcode/lib/libcurl.a" \
 		-create -output lib/libcurl_iOS_nobitcode.a
+  
+    lipo \
+        "/tmp/${CURL_VERSION}-iOS-simulator-x86_64-nobitcode/lib/libcurl.a" \
+        "/tmp/${CURL_VERSION}-iOS-simulator-arm64-nobitcode/lib/libcurl.a" \
+        -create -output lib/libcurl_iOS_simulator_nobitcode.a
 
 fi
 

@@ -14,7 +14,7 @@ set -e
 ################################################
 
 OPENSSL="1.1.1t"	# https://www.openssl.org/source/ 
-LIBCURL="8.6.0"		# https://curl.haxx.se/download.html
+LIBCURL="8.7.1"		# https://curl.haxx.se/download.html
 NGHTTP2="1.52.0"	# https://nghttp2.org/
 
 ################################################
@@ -208,40 +208,37 @@ mkdir -p "$ARCHIVE/framework"
 mkdir -p "$ARCHIVE/xcframework"
 
 # libraries for libcurl, libcrypto and libssl
-cp curl/lib/libcurl_iOS.a $ARCHIVE/lib/iOS/libcurl.a
-cp curl/lib/libcurl_iOS-simulator.a $ARCHIVE/lib/iOS-simulator/libcurl.a
-cp curl/lib/libcurl_iOS-fat.a $ARCHIVE/lib/iOS-fat/libcurl.a
+cp curl/lib/libcurl_iOS.a $ARCHIVE/lib/iOS/libcurl_iOS.a
+cp curl/lib/libcurl_iOS_simulator.a $ARCHIVE/lib/iOS-simulator/libcurl_iOS_simulator.a
 
 if [ "$buildopenssl" != "" ]; then
-    cp openssl/iOS/lib/libcrypto.a $ARCHIVE/lib/iOS/libcrypto.a
-    cp openssl/iOS-simulator/lib/libcrypto.a $ARCHIVE/lib/iOS-simulator/libcrypto.a
-    cp openssl/iOS-fat/lib/libcrypto.a $ARCHIVE/lib/iOS-fat/libcrypto.a
+    cp openssl/iOS/lib/libcrypto_iOS.a $ARCHIVE/lib/iOS/libcrypto_iOS.a
+    cp openssl/iOS-simulator/lib/libcrypto_iOS_simulator.a $ARCHIVE/lib/iOS-simulator/libcrypto_iOS_simulator.a
 
-    cp openssl/iOS/lib/libssl.a $ARCHIVE/lib/iOS/libssl.a
-    cp openssl/iOS-simulator/lib/libssl.a $ARCHIVE/lib/iOS-simulator/libssl.a
-    cp openssl/iOS-fat/lib/libssl.a $ARCHIVE/lib/iOS-fat/libssl.a
+    cp openssl/iOS/lib/libssl_iOS.a $ARCHIVE/lib/iOS/libssl_iOS.a
+    cp openssl/iOS-simulator/lib/libssl_iOS_simulator.a $ARCHIVE/lib/iOS-simulator/libssl_iOS_simulator.a
 fi
 
 
 # Build XCFrameworks
 xcodebuild -create-xcframework \
-	-library $ARCHIVE/lib/iOS/libcurl.a \
+    -library $ARCHIVE/lib/iOS/libcurl_iOS.a \
     -headers curl/include \
-	-library $ARCHIVE/lib/iOS-simulator/libcurl.a \
+    -library $ARCHIVE/lib/iOS-simulator/libcurl_iOS_simulator.a \
     -headers curl/include \
 	-output $ARCHIVE/xcframework/libcurl.xcframework
     
 if [ "$buildopenssl" != "" ]; then
     xcodebuild -create-xcframework \
-        -library $ARCHIVE/lib/iOS/libcrypto.a \
+        -library $ARCHIVE/lib/iOS/libcrypto_iOS.a \
         -headers openssl/iOS/include \
-        -library $ARCHIVE/lib/iOS-simulator/libcrypto.a \
+        -library $ARCHIVE/lib/iOS-simulator/libcrypto_iOS_simulator.a \
         -headers openssl/iOS-simulator/include \
         -output $ARCHIVE/xcframework/libcrypto.xcframework
 
     xcodebuild -create-xcframework \
-        -library $ARCHIVE/lib/iOS/libssl.a \
-        -library $ARCHIVE/lib/iOS-simulator/libssl.a \
+        -library $ARCHIVE/lib/iOS/libssl_iOS.a \
+        -library $ARCHIVE/lib/iOS-simulator/libssl_iOS_simulator.a \
         -output $ARCHIVE/xcframework/libssl.xcframework
 
     cp openssl/*.a $ARCHIVE/framework
@@ -250,12 +247,11 @@ fi
 # libraries for nghttp2
 if [ "$buildnghttp2" != "" ]; then
     # nghttp2 libraries
-	cp nghttp2/lib/libnghttp2_iOS.a $ARCHIVE/lib/iOS/libnghttp2.a
-	cp nghttp2/lib/libnghttp2_iOS-simulator.a $ARCHIVE/lib/iOS-simulator/libnghttp2.a
-	cp nghttp2/lib/libnghttp2_iOS-fat.a $ARCHIVE/lib/iOS-fat/libnghttp2.a
+    cp nghttp2/lib/libnghttp2_iOS.a $ARCHIVE/lib/iOS/libnghttp2_iOS.a
+    cp nghttp2/lib/libnghttp2_iOS_simulator.a $ARCHIVE/lib/iOS-simulator/libnghttp2_iOS_simulator.a
     xcodebuild -create-xcframework \
-		-library $ARCHIVE/lib/iOS/libnghttp2.a \
-		-library $ARCHIVE/lib/iOS-simulator/libnghttp2.a \
+        -library $ARCHIVE/lib/iOS/libnghttp2_iOS.a \
+        -library $ARCHIVE/lib/iOS-simulator/libnghttp2_iOS_simulator.a \
 		-output $ARCHIVE/xcframework/libnghttp2.xcframework
 fi
 
