@@ -13,6 +13,8 @@
 # Preston Jennings
 #   https://github.com/prestonj/Build-OpenSSL-cURL
 
+# Modified by Perry
+
 set -e
 
 # Formatting
@@ -38,6 +40,7 @@ CURL_VERSION="curl-7.74.0"
 nohttp2="0"
 noopenssl="0"
 catalyst="0"
+NOBITCODE="yes"
 
 #https://github.com/curl/curl/blob/master/docs/INSTALL.md
 CURL_PARAMS="--enable-websockets"
@@ -260,11 +263,11 @@ buildIOS()
 	export LDFLAGS="-arch ${ARCH} -isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -L${OPENSSL}/${PLATFORMDIR}/lib ${NGHTTP2LIB}"
 
 	
-	./configure -prefix="/tmp/${CURL_VERSION}-iOS-${ARCH}-${BITCODE}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="arm-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-${ARCH}-${BITCODE}.log"
+	./configure -prefix="/tmp/${CURL_VERSION}-iOS-${ARCH}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="arm-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-${ARCH}.log"
    	
-	make -j${CORES} >> "/tmp/${CURL_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
-	make install >> "/tmp/${CURL_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
-	make clean >> "/tmp/${CURL_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
+	make -j${CORES} >> "/tmp/${CURL_VERSION}-iOS-${ARCH}.log" 2>&1
+	make install >> "/tmp/${CURL_VERSION}-iOS-${ARCH}.log" 2>&1
+	make clean >> "/tmp/${CURL_VERSION}-iOS-${ARCH}.log" 2>&1
 	popd > /dev/null
 }
 
@@ -316,15 +319,15 @@ buildIOSsim()
 	echo -e "${subbold}Building ${CURL_VERSION} for ${PLATFORM} ${IOS_SDK_VERSION} ${archbold}${ARCH}${dim} ${BITCODE} (iOS ${IOS_MIN_SDK_VERSION})"
 
 	if [[ "${ARCH}" == *"arm64"* || "${ARCH}" == "arm64e" ]]; then
-		./configure -prefix="/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}-${BITCODE}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="arm-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}-${BITCODE}.log"
+		./configure -prefix="/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="arm-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log"
 	else
-		./configure -prefix="/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}-${BITCODE}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="${ARCH}-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}-${BITCODE}.log"
+		./configure -prefix="/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="${ARCH}-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log"
 	fi
  
 
-	make -j${CORES} >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}-${BITCODE}.log" 2>&1
-	make install >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}-${BITCODE}.log" 2>&1
-	make clean >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}-${BITCODE}.log" 2>&1
+	make -j${CORES} >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log" 2>&1
+	make install >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log" 2>&1
+	make clean >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log" 2>&1
 	popd > /dev/null
 }
 
@@ -368,8 +371,8 @@ if [ $catalyst == "1" ]; then
 	buildCatalyst "arm64" "${BITCODE}"
 
 	lipo \
-		"/tmp/${CURL_VERSION}-catalyst-x86_64-${BITCODE}/lib/libcurl.a" \
-		"/tmp/${CURL_VERSION}-catalyst-arm64-${BITCODE}/lib/libcurl.a" \
+		"/tmp/${CURL_VERSION}-catalyst-x86_64/lib/libcurl.a" \
+		"/tmp/${CURL_VERSION}-catalyst-arm64/lib/libcurl.a" \
 		-create -output lib/libcurl_Catalyst.a
 fi
 
@@ -378,28 +381,21 @@ buildIOS "arm64" "${BITCODE}"
 buildIOS "arm64e" "${BITCODE}"
 
 lipo \
-	"/tmp/${CURL_VERSION}-iOS-arm64-${BITCODE}/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-arm64e-${BITCODE}/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-arm64/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-arm64e/lib/libcurl.a" \
 	-create -output lib/libcurl_iOS.a
 
 buildIOSsim "x86_64" "${BITCODE}"
 buildIOSsim "arm64" "${BITCODE}"
 
 lipo \
-	"/tmp/${CURL_VERSION}-iOS-simulator-x86_64-${BITCODE}/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-simulator-arm64-${BITCODE}/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-simulator-x86_64/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-simulator-arm64/lib/libcurl.a" \
 	-create -output lib/libcurl_iOS_simulator.a
 
 
-lipo \
-	"/tmp/${CURL_VERSION}-iOS-arm64-${BITCODE}/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-arm64e-${BITCODE}/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-simulator-x86_64-${BITCODE}/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-simulator-arm64-${BITCODE}/lib/libcurl.a" \
-	-create -output lib/libcurl_iOS-fat.a
-
 echo "  Copying headers"
-cp /tmp/${CURL_VERSION}-iOS-arm64-${BITCODE}/include/curl/* include/curl/
+cp /tmp/${CURL_VERSION}-iOS-arm64/include/curl/* include/curl/
 
 #=================================================================================
 # Finalize

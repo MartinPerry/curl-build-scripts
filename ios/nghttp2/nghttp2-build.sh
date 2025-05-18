@@ -8,6 +8,8 @@
 # NGHTTP2 - https://github.com/nghttp2/nghttp2
 #
 
+# Modified by Perry
+
 # > nghttp2 is an implementation of HTTP/2 and its header 
 # > compression algorithm HPACK in C
 # 
@@ -37,6 +39,7 @@ trap 'echo -e "${alert}** ERROR with Build - Check /tmp/nghttp2*.log${alertdim}"
 NGHTTP2_VERNUM="1.41.0"
 
 catalyst="0"
+NOBITCODE="yes"
 
 # Set minimum OS versions for target
 IOS_MIN_SDK_VERSION="12.0"
@@ -152,11 +155,11 @@ buildIOS()
    
 	echo -e "${subbold}Building ${NGHTTP2_VERSION} for ${PLATFORM} ${IOS_SDK_VERSION} ${archbold}${ARCH}${dim} (iOS ${IOS_MIN_SDK_VERSION})"
 	
-    ./configure --disable-shared --disable-app --disable-threads --enable-lib-only  --prefix="${NGHTTP2}/iOS/${ARCH}" --host="arm-apple-darwin" &> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log"
+    ./configure --disable-shared --disable-app --disable-threads --enable-lib-only  --prefix="${NGHTTP2}/iOS/${ARCH}" --host="arm-apple-darwin" &> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log"
 
-	make -j8 >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
-	make install >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
-	make clean >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
+	make -j8 >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log" 2>&1
+	make install >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log" 2>&1
+	make clean >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log" 2>&1
 	popd > /dev/null
 
 	# Clean up exports
@@ -204,14 +207,14 @@ buildIOSsim()
 	echo -e "${subbold}Building ${NGHTTP2_VERSION} for ${PLATFORM} ${IOS_SDK_VERSION} ${archbold}${ARCH}${dim} (iOS ${IOS_MIN_SDK_VERSION})"
     
 	if [[ "${ARCH}" == "arm64" || "${ARCH}" == "arm64e"  ]]; then
-        ./configure --disable-shared --disable-app --disable-threads --enable-lib-only  --prefix="${NGHTTP2}/iOS-simulator/${ARCH}" --host="arm-apple-darwin" &> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log"
+        ./configure --disable-shared --disable-app --disable-threads --enable-lib-only  --prefix="${NGHTTP2}/iOS-simulator/${ARCH}" --host="arm-apple-darwin" &> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log"
 	else
-        ./configure --disable-shared --disable-app --disable-threads --enable-lib-only --prefix="${NGHTTP2}/iOS-simulator/${ARCH}" --host="${ARCH}-apple-darwin" &> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log"
+        ./configure --disable-shared --disable-app --disable-threads --enable-lib-only --prefix="${NGHTTP2}/iOS-simulator/${ARCH}" --host="${ARCH}-apple-darwin" &> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log"
 	fi
 
-	make -j8 >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
-	make install >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
-	make clean >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}-${BITCODE}.log" 2>&1
+	make -j8 >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log" 2>&1
+	make install >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log" 2>&1
+	make clean >> "/tmp/${NGHTTP2_VERSION}-iOS-${ARCH}.log" 2>&1
 	popd > /dev/null
 
 	# Clean up exports
@@ -317,16 +320,22 @@ fi
 echo "Unpacking nghttp2"
 tar xfz "${NGHTTP2_VERSION}.tar.gz"
 
+if ! [[ "${NOBITCODE}" == "yes" ]]; then
+	BITCODE="bitcode"
+else
+	BITCODE="nobitcode"
+fi
+
 #=================================================================================
 # Building
 #=================================================================================
 
-echo -e "${bold}Building iOS libraries (bitcode)${dim}"
-buildIOS "arm64" "bitcode"
-buildIOS "arm64e" "bitcode"
+echo -e "${bold}Building iOS libraries (${BITCODE})${dim}"
+buildIOS "arm64" "${BITCODE}"
+buildIOS "arm64e" "${BITCODE}"
 
-buildIOSsim "x86_64" "bitcode"
-buildIOSsim "arm64" "bitcode"
+buildIOSsim "x86_64" "${BITCODE}"
+buildIOSsim "arm64" "${BITCODE}"
 
 if [ $catalyst == "1" ]; then
 	echo -e "${bold}Building Catalyst libraries${dim}"
@@ -349,13 +358,6 @@ lipo \
 	"${NGHTTP2}/iOS-simulator/x86_64/lib/libnghttp2.a" \
 	"${NGHTTP2}/iOS-simulator/arm64/lib/libnghttp2.a" \
 	-create -output "${NGHTTP2}/lib/libnghttp2_iOS_simulator.a"
-
-lipo \
-	"${NGHTTP2}/iOS/arm64/lib/libnghttp2.a" \
-	"${NGHTTP2}/iOS/arm64e/lib/libnghttp2.a" \
-	"${NGHTTP2}/iOS-simulator/x86_64/lib/libnghttp2.a" \
-	"${NGHTTP2}/iOS-simulator/arm64/lib/libnghttp2.a" \
-	-create -output "${NGHTTP2}/lib/libnghttp2_iOS-fat.a"	
 
 #=================================================================================
 # Finalize

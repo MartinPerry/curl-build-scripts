@@ -6,6 +6,8 @@
 # Date: 2020-Aug-15
 #
 
+# Modified by Perry
+
 set -e
 
 # Custom build options
@@ -28,6 +30,8 @@ alertdim="\033[0m${red}\033[2m"
 
 # set trap to help debug build errors
 trap 'echo -e "${alert}** ERROR with Build - Check /tmp/openssl*.log${alertdim}"; tail -3 /tmp/openssl*.log' INT TERM EXIT
+
+NOBITCODE="yes"
 
 # Set minimum OS versions for target
 IOS_MIN_SDK_VERSION="12.0"
@@ -85,6 +89,7 @@ version_lte() {
 buildIOS()
 {
 	ARCH=$1
+	BITCODE=$2
 
 	pushd . > /dev/null
 	cd "${OPENSSL_VERSION}"
@@ -96,11 +101,17 @@ buildIOS()
 		#sed -ie "s!static volatile sig_atomic_t intr_signal;!static volatile intr_signal;!" "crypto/ui/ui_openssl.c"
 	fi
 
+	if [[ "${BITCODE}" == "nobitcode" ]]; then
+			CC_BITCODE_FLAG=""
+	else
+			CC_BITCODE_FLAG="-fembed-bitcode"
+	fi
+
 	export $PLATFORM
 	export CROSS_TOP="${DEVELOPER}/Platforms/${PLATFORM}.platform/Developer"
 	export CROSS_SDK="${PLATFORM}${IOS_SDK_VERSION}.sdk"
 	export BUILD_TOOLS="${DEVELOPER}"
-	export CC="${BUILD_TOOLS}/usr/bin/gcc -fembed-bitcode -arch ${ARCH}"
+	export CC="${BUILD_TOOLS}/usr/bin/gcc ${CC_BITCODE_FLAG} -arch ${ARCH}"
 
 	echo -e "${subbold}Building ${OPENSSL_VERSION} for ${PLATFORM} ${IOS_SDK_VERSION} ${archbold}${ARCH}${dim} (iOS ${IOS_MIN_SDK_VERSION})"
 
@@ -149,6 +160,7 @@ buildIOS()
 buildIOSsim()
 {
 	ARCH=$1
+	BITCODE=$2
 
 	pushd . > /dev/null
 	cd "${OPENSSL_VERSION}"
@@ -169,9 +181,15 @@ buildIOSsim()
 		#	fi
 		#fi
 	fi
+
+	if [[ "${BITCODE}" == "nobitcode" ]]; then
+			CC_BITCODE_FLAG=""
+	else
+			CC_BITCODE_FLAG="-fembed-bitcode"
+	fi
 	
 	# set up exports for build 
-	export CFLAGS=" -Os -miphoneos-version-min=${MIPHONEOS} -fembed-bitcode -arch ${ARCH} ${RUNTARGET} "
+	export CFLAGS=" -Os -miphoneos-version-min=${MIPHONEOS} ${CC_BITCODE_FLAG} -arch ${ARCH} ${RUNTARGET} "
 	export LDFLAGS=" -arch ${ARCH} -isysroot ${DEVELOPER}/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk "
 	export CPPFLAGS=" -I.. -isysroot ${DEVELOPER}/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk "
 	export CROSS_TOP="${DEVELOPER}/Platforms/${PLATFORM}.platform/Developer"
@@ -222,12 +240,10 @@ buildIOSsim()
 #mkdir -p Catalyst/lib
 mkdir -p iOS/lib
 mkdir -p iOS-simulator/lib
-mkdir -p iOS-fat/lib
 #mkdir -p Mac/include/openssl/
 #mkdir -p Catalyst/include/openssl/
 mkdir -p iOS/include/openssl/
 mkdir -p iOS-simulator/include/openssl/
-mkdir -p iOS-fat/include/openssl/
 
 rm -rf "/tmp/${OPENSSL_VERSION}-*"
 rm -rf "/tmp/${OPENSSL_VERSION}-*.log"
@@ -255,20 +271,26 @@ fi
 echo "Unpacking openssl"
 tar xfz "${OPENSSL_VERSION}.tar.gz"
 
+if ! [[ "${NOBITCODE}" == "yes" ]]; then
+	BITCODE="bitcode"
+else
+	BITCODE="nobitcode"
+fi
+
 if [ "$engine" == "1" ]; then
 	echo "+ Activate Static Engine"
 	sed -ie 's/\"engine/\"dynamic-engine/' ${OPENSSL_VERSION}/Configurations/15-ios.conf
 fi
 
-echo -e "${bold}Building iOS libraries${dim}"
+echo -e "${bold}Building iOS libraries${dim} (${BITCODE})"
 
 
 #================================================================
 # Device
 #================================================================
 
-buildIOS "arm64"
-buildIOS "arm64e"
+buildIOS "arm64" "${BITCODE}"
+buildIOS "arm64e" "${BITCODE}"
 
 echo "  Copying headers and libraries"
 cp /tmp/${OPENSSL_VERSION}-iOS-arm64/include/openssl/* iOS/include/openssl/
@@ -283,12 +305,15 @@ lipo \
 	"/tmp/${OPENSSL_VERSION}-iOS-arm64e/lib/libssl.a" \
 	-create -output iOS/lib/libssl.a
 
+echo "  Creating combined OpenSSL libraries for iOS"
+libtool -no_warning_for_no_symbols -static -o openssl-ios-arm64_arm64e.a iOS/lib/libcrypto.a iOS/lib/libssl.a
+
 #================================================================
 # Simulator
 #================================================================
 
-buildIOSsim "x86_64"
-buildIOSsim "arm64"
+buildIOSsim "x86_64" "${BITCODE}"
+buildIOSsim "arm64" "${BITCODE}"
 
 echo "  Copying headers and libraries"
 cp /tmp/${OPENSSL_VERSION}-iOS-Simulator-x86_64/include/openssl/* iOS-simulator/include/openssl/
@@ -303,26 +328,7 @@ lipo \
 	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-arm64/lib/libssl.a" \
 	-create -output iOS-simulator/lib/libssl.a
 
-lipo \
-	"/tmp/${OPENSSL_VERSION}-iOS-arm64/lib/libcrypto.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-arm64e/lib/libcrypto.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-x86_64/lib/libcrypto.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-arm64/lib/libcrypto.a" \
-	-create -output iOS-fat/lib/libcrypto.a
-
-#================================================================
-# Fat
-#================================================================
-
-lipo \
-	"/tmp/${OPENSSL_VERSION}-iOS-arm64/lib/libssl.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-arm64e/lib/libssl.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-x86_64/lib/libssl.a" \
-	"/tmp/${OPENSSL_VERSION}-iOS-Simulator-arm64/lib/libssl.a" \
-	-create -output iOS-fat/lib/libssl.a
-
-echo "  Creating combined OpenSSL libraries for iOS"
-libtool -no_warning_for_no_symbols -static -o openssl-ios-arm64_arm64e.a iOS/lib/libcrypto.a iOS/lib/libssl.a
+echo "  Creating combined OpenSSL libraries for iOS-simulator"
 libtool -no_warning_for_no_symbols -static -o openssl-ios-x86_64_arm64-simulator.a iOS-simulator/lib/libcrypto.a iOS-simulator/lib/libssl.a
 
 #=================================================================================

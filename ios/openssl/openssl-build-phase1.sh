@@ -6,6 +6,8 @@
 # Date: 2020-Aug-15
 #
 
+# Modified by Perry
+
 set -e
 
 # Custom build options

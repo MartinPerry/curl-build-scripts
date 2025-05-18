@@ -6,6 +6,8 @@
 #   https://github.com/jasonacox/Build-OpenSSL-cURL
 #
 
+# Modified by Perry
+
 # Ensure we stop if build failure occurs
 set -e
 
@@ -143,9 +145,10 @@ START=$(date +%s)
 if [ "$buildopenssl" == "" ]; then
     echo -e "No OpenSSL"
 else
-    echo
-    cd openssl
+    echo    
     echo -e "${bold}Building OpenSSL${normal}"
+	echo "with params: ./openssl-build.sh -v ${OPENSSL} ${engine} ${colorflag} ${catalyst} ${OSARGS}"
+	cd openssl
     ./openssl-build.sh -v "$OPENSSL" $engine $colorflag $catalyst $OSARGS
     cd ..
 fi
@@ -171,6 +174,7 @@ fi
 
 echo
 echo -e "${bold}Building Curl${normal}"
+echo "with params: ./libcurl-build.sh -v ${LIBCURL} ${colorflag} ${buildnghttp2} ${buildopenssl} ${catalyst} ${OSARGS}"
 cd curl
 ./libcurl-build.sh -v "$LIBCURL" $colorflag $buildnghttp2 $buildopenssl $catalyst $OSARGS
 cd ..
@@ -214,7 +218,6 @@ fi
 mkdir -p "$ARCHIVE/include/curl"
 mkdir -p "$ARCHIVE/lib/iOS"
 mkdir -p "$ARCHIVE/lib/iOS-simulator"
-mkdir -p "$ARCHIVE/lib/iOS-fat"
 if [ "$catalyst" != "" ]; then
 	mkdir -p "$ARCHIVE/lib/Catalyst"
 fi
@@ -230,22 +233,21 @@ mkdir -p "$ARCHIVE/xcframework"
 # libraries for libcurl, libcrypto and libssl
 cp curl/lib/libcurl_iOS.a $ARCHIVE/lib/iOS/libcurl_iOS.a
 cp curl/lib/libcurl_iOS_simulator.a $ARCHIVE/lib/iOS-simulator/libcurl_iOS_simulator.a
-cp curl/lib/libcurl_iOS-fat.a $ARCHIVE/lib/iOS-fat/libcurl.a
 
 if [ "$catalyst" != "" ]; then
 	cp curl/lib/libcurl_Catalyst.a $ARCHIVE/lib/Catalyst/libcurl_Catalyst.a
 fi
 
 if [ "$buildopenssl" != "" ]; then
-    cp openssl/iOS/lib/libcrypto_iOS.a $ARCHIVE/lib/iOS/libcrypto_iOS.a
-    cp openssl/iOS-simulator/lib/libcrypto_iOS_simulator.a $ARCHIVE/lib/iOS-simulator/libcrypto_iOS_simulator.a
+    cp openssl/iOS/lib/libcrypto.a $ARCHIVE/lib/iOS/libcrypto_iOS.a
+    cp openssl/iOS-simulator/lib/libcrypto.a $ARCHIVE/lib/iOS-simulator/libcrypto_iOS_simulator.a
 
-    cp openssl/iOS/lib/libssl_iOS.a $ARCHIVE/lib/iOS/libssl_iOS.a
-    cp openssl/iOS-simulator/lib/libssl_iOS_simulator.a $ARCHIVE/lib/iOS-simulator/libssl_iOS_simulator.a
+    cp openssl/iOS/lib/libssl.a $ARCHIVE/lib/iOS/libssl_iOS.a
+    cp openssl/iOS-simulator/lib/libssl.a $ARCHIVE/lib/iOS-simulator/libssl_iOS_simulator.a
 
 	if [ "$catalyst" != "" ]; then		
-		cp openssl/Catalyst/lib/libcrypto_Catalyst.a $ARCHIVE/lib/Catalyst/libcrypto_Catalyst.a
-		cp openssl/Catalyst/lib/libssl_Catalyst.a $ARCHIVE/lib/Catalyst/libssl_Catalyst.a
+		cp openssl/Catalyst/lib/libcrypto.a $ARCHIVE/lib/Catalyst/libcrypto_Catalyst.a
+		cp openssl/Catalyst/lib/libssl.a $ARCHIVE/lib/Catalyst/libssl_Catalyst.a
 	fi
 fi
 
