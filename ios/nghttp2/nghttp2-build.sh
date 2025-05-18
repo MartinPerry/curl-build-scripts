@@ -65,19 +65,9 @@ usage ()
 
 while getopts "v:s:u:mxh\?" o; do    
     case "${o}" in
-        v)
-            NGHTTP2_VERNUM="${OPTARG}"
-            ;;
-        s)
-            IOS_MIN_SDK_VERSION="${OPTARG}"
-            ;;
-		m)
-            catalyst="1"
-            ;;
-		u)
-			catalyst="1"
-			CATALYST_IOS="${OPTARG}"
-			;;
+        v) NGHTTP2_VERNUM="${OPTARG}" ;;
+        s) IOS_MIN_SDK_VERSION="${OPTARG}" ;;
+		m) catalyst="1" ;;		
         x)
             bold=""
             subbold=""
@@ -87,9 +77,7 @@ while getopts "v:s:u:mxh\?" o; do
             alertdim=""
             archbold=""
             ;;
-        *)
-            usage
-            ;;
+        *) usage ;;
     esac
 done
 shift $((OPTIND-1))

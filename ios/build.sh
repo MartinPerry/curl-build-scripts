@@ -146,7 +146,7 @@ else
     echo
     cd openssl
     echo -e "${bold}Building OpenSSL${normal}"
-    #./openssl-build.sh -v "$OPENSSL" $engine $colorflag $catalyst $OSARGS
+    ./openssl-build.sh -v "$OPENSSL" $engine $colorflag $catalyst $OSARGS
     cd ..
 fi
 
@@ -161,7 +161,7 @@ else
 	echo -e "${bold}Building nghttp2 for HTTP2 support${normal}"
     echo "with params: ./nghttp2-build.sh -v ${NGHTTP2} ${colorflag} ${catalyst} ${OSARGS}"
 	cd nghttp2
-   	#./nghttp2-build.sh -v "$NGHTTP2" $colorflag $catalyst $OSARGS
+   	./nghttp2-build.sh -v "$NGHTTP2" $colorflag $catalyst $OSARGS
 	cd ..
 fi
 
