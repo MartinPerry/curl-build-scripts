@@ -36,10 +36,12 @@ trap 'echo -e "${alert}** ERROR with Build - Check /tmp/nghttp2*.log${alertdim}"
 # --- Edit this to update default version ---
 NGHTTP2_VERNUM="1.41.0"
 
+catalyst="0"
 
 # Set minimum OS versions for target
 IOS_MIN_SDK_VERSION="12.0"
 IOS_SDK_VERSION=""
+CATALYST_IOS="15.0"				# Min supported is iOS 15.0 for Mac Catalyst
 
 CORES=$(sysctl -n hw.ncpu)
 
@@ -52,6 +54,8 @@ usage ()
     echo
 	echo "         -v   version of nghttp2 (default $NGHTTP2_VERNUM)"
 	echo "         -s   iOS min target version (default $IOS_MIN_SDK_VERSION)"
+	echo "         -m   compile Mac Catalyst library"
+	echo "         -u   Mac Catalyst iOS min target version (default $CATALYST_IOS)"
 	echo "         -x   disable color output"
 	echo "         -h   show usage"	
 	echo
@@ -59,7 +63,7 @@ usage ()
 	exit 127
 }
 
-while getopts "v:s:xh\?" o; do    
+while getopts "v:s:u:mxh\?" o; do    
     case "${o}" in
         v)
             NGHTTP2_VERNUM="${OPTARG}"
@@ -67,6 +71,13 @@ while getopts "v:s:xh\?" o; do
         s)
             IOS_MIN_SDK_VERSION="${OPTARG}"
             ;;
+		m)
+            catalyst="1"
+            ;;
+		u)
+			catalyst="1"
+			CATALYST_IOS="${OPTARG}"
+			;;
         x)
             bold=""
             subbold=""
@@ -223,12 +234,85 @@ buildIOSsim()
 	export CPPFLAGS=""
 }
 
+buildCatalyst()
+{
+	ARCH=$1
+
+	TARGET="darwin64-${ARCH}-cc"
+	BUILD_MACHINE=`uname -m`
+
+	export CC="${BUILD_TOOLS}/usr/bin/gcc"
+    export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -fembed-bitcode -target ${ARCH}-apple-ios${CATALYST_IOS}-macabi "
+    export LDFLAGS="-arch ${ARCH}"
+
+	if [[ $ARCH == "x86_64" ]]; then
+		TARGET="darwin64-x86_64-cc"
+		MACOS_VER="${MACOS_X86_64_VERSION}"
+		if [ ${BUILD_MACHINE} == 'arm64' ]; then
+   			# Apple ARM Silicon Build Machine Detected - cross compile
+			TARGET="darwin64-x86_64-cc"
+			MACOS_VER="${MACOS_X86_64_VERSION}"
+			export CC="clang"
+			export CXX="clang"
+			export CFLAGS=" -Os -mmacosx-version-min=${MACOS_X86_64_VERSION} -arch ${ARCH} -gdwarf-2 -fembed-bitcode -target ${ARCH}-apple-ios${CATALYST_IOS}-macabi "
+			export LDFLAGS=" -arch ${ARCH} -isysroot ${DEVELOPER}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk "
+			export CPPFLAGS=" -I.. -isysroot ${DEVELOPER}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk "
+		else
+			# Apple x86_64 Build Machine Detected - native build
+			export CFLAGS=" -mmacosx-version-min=${MACOS_X86_64_VERSION} -arch ${ARCH} -pipe -Os -gdwarf-2 -fembed-bitcode -target ${ARCH}-apple-ios${CATALYST_IOS}-macabi "
+		fi
+	fi
+	if [[ $ARCH == "arm64" ]]; then
+		TARGET="darwin64-arm64-cc"
+		MACOS_VER="${MACOS_ARM64_VERSION}"
+		if [ ${BUILD_MACHINE} == 'arm64' ]; then
+   			# Apple ARM Silicon Build Machine Detected - native build
+			TARGET="darwin64-arm64-cc"
+			export CFLAGS=" -mmacosx-version-min=${MACOS_ARM64_VERSION} -arch ${ARCH} -pipe -Os -gdwarf-2 -fembed-bitcode -target ${ARCH}-apple-ios${CATALYST_IOS}-macabi "
+		else
+			# Apple x86_64 Build Machine Detected - cross compile
+			TARGET="darwin64-arm64-cc"
+			export CC="clang"
+			export CXX="clang"
+			export CFLAGS=" -Os -mmacosx-version-min=${MACOS_ARM64_VERSION} -arch ${ARCH} -gdwarf-2 -fembed-bitcode -target ${ARCH}-apple-ios${CATALYST_IOS}-macabi "
+			export LDFLAGS=" -arch ${ARCH} -isysroot ${DEVELOPER}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk "
+			export CPPFLAGS=" -I.. -isysroot ${DEVELOPER}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk "
+		fi
+	fi
+
+	echo -e "${subbold}Building ${NGHTTP2_VERSION} for ${archbold}${ARCH}${dim} (MacOS ${MACOS_VER} Catalyst iOS ${CATALYST_IOS})"
+
+	pushd . > /dev/null
+	cd "${NGHTTP2_VERSION}"
+
+	# Cross compile required for Catalyst
+	if [[ "${ARCH}" == "arm64" ]]; then
+		./configure --disable-shared --disable-app --disable-threads --enable-lib-only  --prefix="${NGHTTP2}/Catalyst/${ARCH}" --host="arm-apple-darwin" &> "/tmp/${NGHTTP2_VERSION}-catalyst-${ARCH}.log"
+	else
+		./configure --disable-shared --disable-app --disable-threads --enable-lib-only --prefix="${NGHTTP2}/Catalyst/${ARCH}" --host="${ARCH}-apple-darwin" &> "/tmp/${NGHTTP2_VERSION}-catalyst-${ARCH}.log"
+	fi
+	
+	make -j${CORES} >> "/tmp/${NGHTTP2_VERSION}-catalyst-${ARCH}.log" 2>&1
+	make install >> "/tmp/${NGHTTP2_VERSION}-catalyst-${ARCH}.log" 2>&1
+	make clean >> "/tmp/${NGHTTP2_VERSION}-catalyst-${ARCH}.log" 2>&1
+	popd > /dev/null
+
+	# Clean up exports
+	export CC=""
+	export CXX=""
+	export CFLAGS=""
+	export LDFLAGS=""
+	export CPPFLAGS=""
+}
+
 echo -e "${bold}Cleaning up${dim}"
 rm -rf include/nghttp2/* lib/*
 rm -fr iOS
+rm -fr Catalyst
 
 mkdir -p lib
 mkdir -p iOS
+mkdir -p Catalyst
 
 rm -rf "/tmp/${NGHTTP2_VERSION}-*"
 rm -rf "/tmp/${NGHTTP2_VERSION}-*.log"
@@ -245,12 +329,28 @@ fi
 echo "Unpacking nghttp2"
 tar xfz "${NGHTTP2_VERSION}.tar.gz"
 
+#=================================================================================
+# Building
+#=================================================================================
+
 echo -e "${bold}Building iOS libraries (bitcode)${dim}"
 buildIOS "arm64" "bitcode"
 buildIOS "arm64e" "bitcode"
 
 buildIOSsim "x86_64" "bitcode"
 buildIOSsim "arm64" "bitcode"
+
+if [ $catalyst == "1" ]; then
+	echo -e "${bold}Building Catalyst libraries${dim}"
+	buildCatalyst "x86_64"
+	buildCatalyst "arm64"
+
+	lipo \
+		"${NGHTTP2}/Catalyst/x86_64/lib/libnghttp2.a" \
+		"${NGHTTP2}/Catalyst/arm64/lib/libnghttp2.a" \
+		-create -output "${NGHTTP2}/lib/libnghttp2_Catalyst.a"
+fi
+
 
 lipo \
 	"${NGHTTP2}/iOS/arm64/lib/libnghttp2.a" \
@@ -261,6 +361,10 @@ lipo \
 	"${NGHTTP2}/iOS-simulator/x86_64/lib/libnghttp2.a" \
 	"${NGHTTP2}/iOS-simulator/arm64/lib/libnghttp2.a" \
 	-create -output "${NGHTTP2}/lib/libnghttp2_iOS_simulator.a"
+
+#=================================================================================
+# Finalize
+#=================================================================================
 
 echo -e "${bold}Cleaning up${dim}"
 rm -rf /tmp/${NGHTTP2_VERSION}-*

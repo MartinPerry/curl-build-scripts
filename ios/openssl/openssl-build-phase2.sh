@@ -47,7 +47,6 @@ usage ()
 	echo "         -v   version of OpenSSL (default $VERSION)"
 	echo "         -s   iOS min target version (default $IOS_MIN_SDK_VERSION)"
 	echo "         -e   compile with engine support"
-	echo "         -3   compile with SSLv3 support"
 	echo "         -x   disable color output"
 	echo "         -h   show usage"
 	echo
@@ -57,17 +56,11 @@ usage ()
 
 engine=0
 
-while getopts "v:s:ex3h\?" o; do
+while getopts "v:s:exh\?" o; do
 	case "${o}" in
-		v)
-			OPENSSL_VERSION="openssl-${OPTARG}"
-			;;
-		s)
-			IOS_MIN_SDK_VERSION="${OPTARG}"
-			;;
-		e)
-			engine=1
-			;;
+		v) OPENSSL_VERSION="openssl-${OPTARG}" ;;
+		s) IOS_MIN_SDK_VERSION="${OPTARG}" ;;
+		e) engine=1 ;;
 		x)
 			bold=""
 			subbold=""
@@ -76,13 +69,8 @@ while getopts "v:s:ex3h\?" o; do
 			alert=""
 			alertdim=""
 			archbold=""
-			;;
-		3)
-			CUSTOMCONFIG="enable-ssl3 enable-ssl3-method enable-ssl-trace"
-			;;
-		*)
-			usage
-			;;
+			;;		
+		*) usage ;;
 	esac
 done
 shift $((OPTIND-1))
@@ -235,13 +223,11 @@ buildIOSsim()
 mkdir -p iOS/lib
 mkdir -p iOS-simulator/lib
 mkdir -p iOS-fat/lib
-#mkdir -p tvOS/lib
 #mkdir -p Mac/include/openssl/
 #mkdir -p Catalyst/include/openssl/
 mkdir -p iOS/include/openssl/
 mkdir -p iOS-simulator/include/openssl/
 mkdir -p iOS-fat/include/openssl/
-#mkdir -p tvOS/include/openssl/
 
 rm -rf "/tmp/${OPENSSL_VERSION}-*"
 rm -rf "/tmp/${OPENSSL_VERSION}-*.log"

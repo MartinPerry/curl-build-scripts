@@ -38,7 +38,6 @@ CURL_VERSION="curl-7.74.0"
 nohttp2="0"
 noopenssl="0"
 catalyst="0"
-FORCE_SSLV3="no"
 
 #https://github.com/curl/curl/blob/master/docs/INSTALL.md
 CURL_PARAMS="--enable-websockets"
@@ -55,6 +54,7 @@ CURL_PARAMS="${CURL_PARAMS} --without-libpsl --without-libidn2"
 # Set minimum OS versions for target
 IOS_MIN_SDK_VERSION="12.0"
 IOS_SDK_VERSION=""
+CATALYST_IOS="15.0"				# Min supported is iOS 15.0 for Mac Catalyst
 
 CORES=$(sysctl -n hw.ncpu)
 
@@ -63,7 +63,10 @@ version_lte() {
     [  "$1" = "`echo -e "$1\n$2" | sort -V | head -n1`" ]
 }
 
-# Usage Instructions
+#====================================================================== 
+# Show Usage
+#====================================================================== 
+
 usage ()
 {
 	echo
@@ -77,30 +80,23 @@ usage ()
 	echo "         -n   compile with nghttp2"
     echo "         -o   compile with openssl"
 	echo "         -x   disable color output"
-	echo "         -3   enable SSLv3 support"
 	echo "         -h   show usage"
 	echo
 	trap - INT TERM EXIT
 	exit 127
 }
 
-while getopts "v:s:nob3xh\?" o; do
+#====================================================================== 
+# Process command line arguments
+#====================================================================== 
+
+while getopts "v:s:nobxh\?" o; do
     case "${o}" in
-        v)
-			CURL_VERSION="curl-${OPTARG}"
-            ;;
-		s)
-			IOS_MIN_SDK_VERSION="${OPTARG}"
-			;;
-		n)
-			nohttp2="1"
-			;;
-        o)
-            noopenssl="1"
-            ;;
-		b)
-			NOBITCODE="yes"
-			;;
+        v) CURL_VERSION="curl-${OPTARG}" ;;
+		s) IOS_MIN_SDK_VERSION="${OPTARG}" ;;
+		n) nohttp2="1" ;;
+        o) noopenssl="1" ;;
+		b) NOBITCODE="yes" ;;
 		x)
 			bold=""
 			subbold=""
@@ -109,16 +105,15 @@ while getopts "v:s:nob3xh\?" o; do
 			alert=""
 			alertdim=""
 			archbold=""
-			;;
-		3)
-			FORCE_SSLV3="yes"
-			;;
-        *)
-            usage
-            ;;
+			;;		
+        *) usage ;;
     esac
 done
 shift $((OPTIND-1))
+
+#====================================================================== 
+## Init
+#====================================================================== 
 
 OPENSSL="${PWD}/../openssl"
 DEVELOPER=`xcode-select -print-path`
@@ -142,7 +137,10 @@ else
 	NGHTTP2LIB=""
 fi
 
+#====================================================================== 
 # Check to see if pkg-config is already installed
+#====================================================================== 
+
 PATH=$PATH:/tmp/pkg_config/bin
 if ! (type "pkg-config" > /dev/null 2>&1 ) ; then
 	echo -e "${alertdim}** WARNING: pkg-config not installed... attempting to install.${dim}"
@@ -171,6 +169,57 @@ if ! (type "pkg-config" > /dev/null 2>&1 ) ; then
 		exit 1
 	fi
 fi 
+
+#====================================================================== 
+## Build methods
+#====================================================================== 
+
+buildCatalyst()
+{
+	ARCH=$1
+	BITCODE=$2
+
+	pushd . > /dev/null
+	cd "${CURL_VERSION}"
+
+	PLATFORM="MacOSX"
+	TARGET="${ARCH}-apple-ios${CATALYST_IOS}-macabi"
+	BUILD_MACHINE=`uname -m`
+
+	if [[ "${BITCODE}" == "nobitcode" ]]; then
+		CC_BITCODE_FLAG=""
+	else
+		CC_BITCODE_FLAG="-fembed-bitcode"
+	fi
+
+	if [ $nohttp2 == "1" ]; then
+		NGHTTP2CFG="--with-nghttp2=${NGHTTP2}/Catalyst/${ARCH}"
+		NGHTTP2LIB="-L${NGHTTP2}/Catalyst/${ARCH}/lib"
+	else 
+		NGHTTP2CFG="--without-nghttp2"
+		NGHTTP2LIB=""
+	fi
+
+	export $PLATFORM
+	export CROSS_TOP="${DEVELOPER}/Platforms/${PLATFORM}.platform/Developer"
+	export CROSS_SDK="${PLATFORM}.sdk"
+	export CC="${DEVELOPER}/usr/bin/gcc"
+	export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -target $TARGET ${CC_BITCODE_FLAG}"
+	export LDFLAGS="-arch ${ARCH} -isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -L${OPENSSL}/catalyst/lib ${NGHTTP2LIB}"
+
+	echo -e "${subbold}Building ${CURL_VERSION} for ${archbold}${ARCH}${dim} ${BITCODE} (Mac Catalyst iOS ${CATALYST_IOS})"
+
+	if [[ "${ARCH}" == "arm64" ]]; then
+		./configure -prefix="/tmp/${CURL_VERSION}-catalyst-${ARCH}-${BITCODE}" $CONF_FLAGS --with-ssl=${OPENSSL}/catalyst ${NGHTTP2CFG} --host="arm-apple-darwin" &> "/tmp/${CURL_VERSION}-catalyst-${ARCH}-${BITCODE}.log"
+	else
+		./configure -prefix="/tmp/${CURL_VERSION}-catalyst-${ARCH}-${BITCODE}" $CONF_FLAGS --with-ssl=${OPENSSL}/catalyst ${NGHTTP2CFG} --host="${ARCH}-apple-darwin" &> "/tmp/${CURL_VERSION}-catalyst-${ARCH}-${BITCODE}.log"
+	fi
+	
+	make -j${CORES} >> "/tmp/${CURL_VERSION}-catalyst-${ARCH}-${BITCODE}.log" 2>&1
+	make install >> "/tmp/${CURL_VERSION}-catalyst-${ARCH}-${BITCODE}.log" 2>&1
+	make clean >> "/tmp/${CURL_VERSION}-catalyst-${ARCH}-${BITCODE}.log" 2>&1
+	popd > /dev/null
+}
 
 buildIOS()
 {
@@ -279,6 +328,10 @@ buildIOSsim()
 	popd > /dev/null
 }
 
+#====================================================================== 
+## Run
+#====================================================================== 
+
 echo -e "${bold}Cleaning up${dim}"
 rm -rf include/curl/* lib/*
 
@@ -301,19 +354,18 @@ fi
 echo "Unpacking curl"
 tar xfz "${CURL_VERSION}.tar.gz"
 
-if [ ${FORCE_SSLV3} == 'yes' ]; then
-	if version_lte ${CURL_VERSION} "curl-7.76.1"; then
-		echo "SSLv3 Requested: No patch needed for ${CURL_VERSION}."
-	else
-		echo "SSLv3 Requested: This requires a patch for 7.77.0 and above - mileage may vary."
-		# for library
-		sed -i '' '/version == CURL_SSLVERSION_SSLv3/d' "${CURL_VERSION}/lib/setopt.c"
-		patch -N "${CURL_VERSION}/lib/vtls/openssl.c" sslv3.patch || true
-		# for command line
-		sed -i '' -e 's/warnf(global, \"Ignores instruction to use SSLv3\\n\");/config->ssl_version = CURL_SSLVERSION_SSLv3;/g' "${CURL_VERSION}/src/tool_getparam.c"
-	fi
-fi
+#================
 
+if [ $catalyst == "1" ]; then
+	echo -e "${bold}Building Catalyst libraries${dim}"
+	buildCatalyst "x86_64" "bitcode"
+	buildCatalyst "arm64" "bitcode"
+
+	lipo \
+		"/tmp/${CURL_VERSION}-catalyst-x86_64-bitcode/lib/libcurl.a" \
+		"/tmp/${CURL_VERSION}-catalyst-arm64-bitcode/lib/libcurl.a" \
+		-create -output lib/libcurl_Catalyst.a
+fi
 
 echo -e "${bold}Building iOS libraries (bitcode)${dim}"
 buildIOS "arm64" "bitcode"
@@ -335,6 +387,7 @@ lipo \
 	"/tmp/${CURL_VERSION}-iOS-simulator-arm64-bitcode/lib/libcurl.a" \
 	-create -output lib/libcurl_iOS_simulator.a
 
+#================
 
 if [[ "${NOBITCODE}" == "yes" ]]; then
 	echo -e "${bold}Building iOS libraries (nobitcode)${dim}"
@@ -352,8 +405,22 @@ if [[ "${NOBITCODE}" == "yes" ]]; then
         "/tmp/${CURL_VERSION}-iOS-simulator-x86_64-nobitcode/lib/libcurl.a" \
         "/tmp/${CURL_VERSION}-iOS-simulator-arm64-nobitcode/lib/libcurl.a" \
         -create -output lib/libcurl_iOS_simulator_nobitcode.a
+	
+	if [ $catalyst == "1" ]; then
+		echo -e "${bold}Building Catalyst libraries${dim}"
+		buildCatalyst "x86_64" "nobitcode"
+		buildCatalyst "arm64" "nobitcode"
 
+		lipo \
+			"/tmp/${CURL_VERSION}-catalyst-x86_64-nobitcode/lib/libcurl.a" \
+			"/tmp/${CURL_VERSION}-catalyst-arm64-nobitcode/lib/libcurl.a" \
+			-create -output lib/libcurl_Catalyst_nobitcode.a
+	fi
 fi
+
+#====================================================================== 
+## Cleaning
+#====================================================================== 
 
 echo -e "${bold}Cleaning up${dim}"
 rm -rf /tmp/${CURL_VERSION}-*

@@ -11,7 +11,7 @@ set -e
 VERSION="openssl-1.1.1i"
 
 # Phase 1 - Mac, Catalyst and tvOS
-#OPENSSL_VERSION="$VERSION" ./openssl-build-phase1.sh "$@"
+OPENSSL_VERSION="$VERSION" ./openssl-build-phase1.sh "$@"
 
 # Phase 2 - iOS
 OPENSSL_VERSION="$VERSION" ./openssl-build-phase2.sh "$@"
