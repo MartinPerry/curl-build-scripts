@@ -350,6 +350,13 @@ lipo \
 	"${NGHTTP2}/iOS-simulator/arm64/lib/libnghttp2.a" \
 	-create -output "${NGHTTP2}/lib/libnghttp2_iOS_simulator.a"
 
+lipo \
+	"${NGHTTP2}/iOS/arm64/lib/libnghttp2.a" \
+	"${NGHTTP2}/iOS/arm64e/lib/libnghttp2.a" \
+	"${NGHTTP2}/iOS-simulator/x86_64/lib/libnghttp2.a" \
+	"${NGHTTP2}/iOS-simulator/arm64/lib/libnghttp2.a" \
+	-create -output "${NGHTTP2}/lib/libnghttp2_iOS-fat.a"	
+
 #=================================================================================
 # Finalize
 #=================================================================================

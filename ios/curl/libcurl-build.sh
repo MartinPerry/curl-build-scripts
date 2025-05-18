@@ -354,73 +354,56 @@ fi
 echo "Unpacking curl"
 tar xfz "${CURL_VERSION}.tar.gz"
 
+if ! [[ "${NOBITCODE}" == "yes" ]]; then
+	BITCODE="bitcode"
+else
+	BITCODE="nobitcode"
+fi
+
 #================
 
 if [ $catalyst == "1" ]; then
 	echo -e "${bold}Building Catalyst libraries${dim}"
-	buildCatalyst "x86_64" "bitcode"
-	buildCatalyst "arm64" "bitcode"
+	buildCatalyst "x86_64" "${BITCODE}"
+	buildCatalyst "arm64" "${BITCODE}"
 
 	lipo \
-		"/tmp/${CURL_VERSION}-catalyst-x86_64-bitcode/lib/libcurl.a" \
-		"/tmp/${CURL_VERSION}-catalyst-arm64-bitcode/lib/libcurl.a" \
+		"/tmp/${CURL_VERSION}-catalyst-x86_64-${BITCODE}/lib/libcurl.a" \
+		"/tmp/${CURL_VERSION}-catalyst-arm64-${BITCODE}/lib/libcurl.a" \
 		-create -output lib/libcurl_Catalyst.a
 fi
 
-echo -e "${bold}Building iOS libraries (bitcode)${dim}"
-buildIOS "arm64" "bitcode"
-buildIOS "arm64e" "bitcode"
+echo -e "${bold}Building iOS libraries (${BITCODE})${dim}"
+buildIOS "arm64" "${BITCODE}"
+buildIOS "arm64e" "${BITCODE}"
 
 lipo \
-	"/tmp/${CURL_VERSION}-iOS-arm64-bitcode/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-arm64e-bitcode/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-arm64-${BITCODE}/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-arm64e-${BITCODE}/lib/libcurl.a" \
 	-create -output lib/libcurl_iOS.a
 
-echo "  Copying headers"
-cp /tmp/${CURL_VERSION}-iOS-arm64-bitcode/include/curl/* include/curl/
-
-buildIOSsim "x86_64" "bitcode"
-buildIOSsim "arm64" "bitcode"
+buildIOSsim "x86_64" "${BITCODE}"
+buildIOSsim "arm64" "${BITCODE}"
 
 lipo \
-	"/tmp/${CURL_VERSION}-iOS-simulator-x86_64-bitcode/lib/libcurl.a" \
-	"/tmp/${CURL_VERSION}-iOS-simulator-arm64-bitcode/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-simulator-x86_64-${BITCODE}/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-simulator-arm64-${BITCODE}/lib/libcurl.a" \
 	-create -output lib/libcurl_iOS_simulator.a
 
-#================
 
-if [[ "${NOBITCODE}" == "yes" ]]; then
-	echo -e "${bold}Building iOS libraries (nobitcode)${dim}"
-	buildIOS "arm64" "nobitcode"
-	buildIOS "arm64e" "nobitcode"
-	buildIOSsim "x86_64" "nobitcode"
-    buildIOSsim "arm64" "nobitcode"
-    
-	lipo \
-		"/tmp/${CURL_VERSION}-iOS-arm64-nobitcode/lib/libcurl.a" \
-		"/tmp/${CURL_VERSION}-iOS-arm64e-nobitcode/lib/libcurl.a" \
-		-create -output lib/libcurl_iOS_nobitcode.a
-  
-    lipo \
-        "/tmp/${CURL_VERSION}-iOS-simulator-x86_64-nobitcode/lib/libcurl.a" \
-        "/tmp/${CURL_VERSION}-iOS-simulator-arm64-nobitcode/lib/libcurl.a" \
-        -create -output lib/libcurl_iOS_simulator_nobitcode.a
-	
-	if [ $catalyst == "1" ]; then
-		echo -e "${bold}Building Catalyst libraries${dim}"
-		buildCatalyst "x86_64" "nobitcode"
-		buildCatalyst "arm64" "nobitcode"
+lipo \
+	"/tmp/${CURL_VERSION}-iOS-arm64-${BITCODE}/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-arm64e-${BITCODE}/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-simulator-x86_64-${BITCODE}/lib/libcurl.a" \
+	"/tmp/${CURL_VERSION}-iOS-simulator-arm64-${BITCODE}/lib/libcurl.a" \
+	-create -output lib/libcurl_iOS-fat.a
 
-		lipo \
-			"/tmp/${CURL_VERSION}-catalyst-x86_64-nobitcode/lib/libcurl.a" \
-			"/tmp/${CURL_VERSION}-catalyst-arm64-nobitcode/lib/libcurl.a" \
-			-create -output lib/libcurl_Catalyst_nobitcode.a
-	fi
-fi
+echo "  Copying headers"
+cp /tmp/${CURL_VERSION}-iOS-arm64-${BITCODE}/include/curl/* include/curl/
 
-#====================================================================== 
-## Cleaning
-#====================================================================== 
+#=================================================================================
+# Finalize
+#=================================================================================
 
 echo -e "${bold}Cleaning up${dim}"
 rm -rf /tmp/${CURL_VERSION}-*

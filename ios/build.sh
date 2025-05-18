@@ -230,6 +230,7 @@ mkdir -p "$ARCHIVE/xcframework"
 # libraries for libcurl, libcrypto and libssl
 cp curl/lib/libcurl_iOS.a $ARCHIVE/lib/iOS/libcurl_iOS.a
 cp curl/lib/libcurl_iOS_simulator.a $ARCHIVE/lib/iOS-simulator/libcurl_iOS_simulator.a
+cp curl/lib/libcurl_iOS-fat.a $ARCHIVE/lib/iOS-fat/libcurl.a
 
 if [ "$catalyst" != "" ]; then
 	cp curl/lib/libcurl_Catalyst.a $ARCHIVE/lib/Catalyst/libcurl_Catalyst.a
@@ -268,9 +269,9 @@ if [ "$catalyst" != "" ]; then
 		-library $ARCHIVE/lib/iOS/libcurl_iOS.a \
 		-headers curl/include \
 		-library $ARCHIVE/lib/iOS-simulator/libcurl_iOS_simulator.a \
-		-headers curl/include \		
+		-headers curl/include \
 		-library $ARCHIVE/lib/Catalyst/libcurl_Catalyst.a \
-        -headers curl/include \        
+        -headers curl/include \
 		-output $ARCHIVE/xcframework/libcurl.xcframework
 else
 	xcodebuild -create-xcframework \
@@ -289,7 +290,7 @@ if [ "$buildopenssl" != "" ]; then
 			-library $ARCHIVE/lib/iOS-simulator/libcrypto_iOS_simulator.a \
 			-headers openssl/iOS-simulator/include \
 			-library $ARCHIVE/lib/Catalyst/libcrypto_Catalyst.a \
-        	-headers openssl/Mac/include \
+        	-headers openssl/Catalyst/include \
 			-output $ARCHIVE/xcframework/libcrypto.xcframework
 
 		xcodebuild -create-xcframework \
@@ -307,7 +308,7 @@ if [ "$buildopenssl" != "" ]; then
 
 		xcodebuild -create-xcframework \
 			-library $ARCHIVE/lib/iOS/libssl_iOS.a \
-			-library $ARCHIVE/lib/iOS-simulator/libssl_iOS_simulator.a \			
+			-library $ARCHIVE/lib/iOS-simulator/libssl_iOS_simulator.a \
 			-output $ARCHIVE/xcframework/libssl.xcframework
 	fi
     cp openssl/*.a $ARCHIVE/framework
@@ -342,10 +343,6 @@ cp curl/include/curl/* "$ARCHIVE/include/curl"
 
 # grab root certs
 curl -sL https://curl.se/ca/cacert.pem > $ARCHIVE/cacert.pem
-
-# create README for archive
-sed -e "s/ZZZCMDS/$BUILD_CMD/g" -e "s/ZZZLIBCURL/$LIBCURL/g" -e "s/ZZZOPENSSL/$OPENSSL/g" -e "s/ZZZNGHTTP2/$NGHTTP2/g" archive/release-template.md > $ARCHIVE/README.md
-echo
 
 #====================================================================== 
 ## Done - Display Build Duration
