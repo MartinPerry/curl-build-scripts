@@ -263,11 +263,14 @@ buildIOS()
 	export LDFLAGS="-arch ${ARCH} -isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -L${OPENSSL}/${PLATFORMDIR}/lib ${NGHTTP2LIB}"
 
 	
-	./configure -prefix="/tmp/${CURL_VERSION}-iOS-${ARCH}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="arm-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-${ARCH}.log"
+	./configure -prefix="/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}" \
+		--disable-shared --enable-static -with-random=/dev/urandom \
+		${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} \
+		--host="arm-apple-darwin" &> "/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}.log"
    	
-	make -j${CORES} >> "/tmp/${CURL_VERSION}-iOS-${ARCH}.log" 2>&1
-	make install >> "/tmp/${CURL_VERSION}-iOS-${ARCH}.log" 2>&1
-	make clean >> "/tmp/${CURL_VERSION}-iOS-${ARCH}.log" 2>&1
+	make -j${CORES} >> "/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}.log" 2>&1
+	make install >> "/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}.log" 2>&1
+	make clean >> "/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}.log" 2>&1
 	popd > /dev/null
 }
 
@@ -281,6 +284,11 @@ buildIOSsim()
 
 	PLATFORM="iPhoneSimulator"
 	PLATFORMDIR="iOS-simulator"
+
+	HOST="${ARCH}-apple-darwin"
+	if [[ "${ARCH}" == *"arm64"* || "${ARCH}" == "arm64e" ]]; then
+		HOST="arm-apple-darwin"
+	fi
 
 	if [[ "${BITCODE}" == "nobitcode" ]]; then
 		CC_BITCODE_FLAG=""
@@ -298,11 +306,10 @@ buildIOSsim()
         SSLCFG="--with-ssl=${OPENSSL}/${PLATFORMDIR}"
     fi
 
-	TARGET="darwin-i386-cc"
-	RUNTARGET=""
-	MIPHONEOS="${IOS_MIN_SDK_VERSION}"
+	#TARGET="darwin-i386-cc"
+	RUNTARGET=""	
 	if [[ $ARCH != "i386" ]]; then
-		TARGET="darwin64-${ARCH}-cc"
+		#TARGET="darwin64-${ARCH}-cc"
 		RUNTARGET="-target ${ARCH}-apple-ios${IOS_MIN_SDK_VERSION}-simulator"
 	fi
 
@@ -312,22 +319,17 @@ buildIOSsim()
 	export CROSS_SDK="${PLATFORM}${IOS_SDK_VERSION}.sdk"
 	export CC="${DEVELOPER}/usr/bin/gcc"
 	export CXX="${DEVELOPER}/usr/bin/gcc"
-	export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -miphoneos-version-min=${MIPHONEOS} ${CC_BITCODE_FLAG} ${RUNTARGET} "
+	export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -miphoneos-version-min=${IOS_MIN_SDK_VERSION} ${CC_BITCODE_FLAG} ${RUNTARGET} "
 	export LDFLAGS="-arch ${ARCH} -isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -L${OPENSSL}/${PLATFORMDIR}/lib ${NGHTTP2LIB} "
 	export CPPFLAGS=" -I.. -isysroot ${DEVELOPER}/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk "
 
 	echo -e "${subbold}Building ${CURL_VERSION} for ${PLATFORM} ${IOS_SDK_VERSION} ${archbold}${ARCH}${dim} ${BITCODE} (iOS ${IOS_MIN_SDK_VERSION})"
 
-	if [[ "${ARCH}" == *"arm64"* || "${ARCH}" == "arm64e" ]]; then
-		./configure -prefix="/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="arm-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log"
-	else
-		./configure -prefix="/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host="${ARCH}-apple-darwin" &> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log"
-	fi
- 
-
-	make -j${CORES} >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log" 2>&1
-	make install >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log" 2>&1
-	make clean >> "/tmp/${CURL_VERSION}-iOS-simulator-${ARCH}.log" 2>&1
+	./configure -prefix="/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}" --disable-shared --enable-static -with-random=/dev/urandom ${CURL_PARAMS} ${SSLCFG} ${NGHTTP2CFG} --host=${HOST} &> "/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}.log"
+	
+	make -j${CORES} >> "/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}.log" 2>&1
+	make install >> "/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}.log" 2>&1
+	make clean >> "/tmp/${CURL_VERSION}-${PLATFORMDIR}-${ARCH}.log" 2>&1
 	popd > /dev/null
 }
 
